@@ -30,6 +30,7 @@ def test_downcast_strings_eager():
     assert df.schema["a"] == pl.Categorical, f"Expected {df.schema['a']} to be {pl.Categorical}"
     assert df.schema["b"] == pl.Int64,f"Expected {df.schema['b']} to be {pl.Int64}"
     assert df.schema["c"] == pl.Boolean,f"Expected {df.schema['c']} to be {pl.Boolean}"
+
 def test_downcast_strings_lazy():
     df = pl.DataFrame({
         "a": ["a", "b", "c"],
@@ -47,7 +48,3 @@ def test_downcast_strings_lazy():
     assert df.schema["a"] == pl.Categorical, f"Expected {df.schema['a']} to be {pl.Categorical}"
     assert df.schema["b"] == pl.Int64,f"Expected {df.schema['b']} to be {pl.Int64}"
     assert df.schema["c"] == pl.Boolean,f"Expected {df.schema['c']} to be {pl.Boolean}"
-
-test_downcast_strings_eager()
-test_downcast_strings_lazy()
-print("All tests passed!")
