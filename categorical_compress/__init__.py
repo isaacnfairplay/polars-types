@@ -1,0 +1,1 @@
+from categorical_compress import downcast_strings
