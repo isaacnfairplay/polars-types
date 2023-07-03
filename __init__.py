@@ -8,9 +8,9 @@ def compresss_file(df):
     return df
 
 def real_test_compresss_file():
-    df = pl.read_csv("https://media.githubusercontent.com/media/datablist/sample-csv-files/main/files/people/people-100000.csv")
-    print(f"Original schema: {df.schema}, size: {df.estimated_size()/1024} kb")
-    df = compresss_file(df)
-    print(f"Schema: {df.schema}, size: {df.estimated_size()/1024} kb")
+    df = pl.scan_csv("exampledata1.csv", infer_schema_length=1)
+    print(f"Original schema: {df.schema}")
+    df = compresss_file(df).collect()
+    print(f"Schema: {df.schema}")
 
-#sreal_test_compresss_file()
+#real_test_compresss_file()
