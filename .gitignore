@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 downcast_integers.csv
 .vscode/launch.json
+exampledata1.csv
