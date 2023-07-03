@@ -13,4 +13,4 @@ def real_test_compresss_file():
     df = compresss_file(df)
     print(f"Schema: {df.schema}, size: {df.estimated_size()/1024} kb")
 
-real_test_compresss_file()
+#sreal_test_compresss_file()
