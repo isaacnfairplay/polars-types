@@ -1,26 +1,17 @@
 import polars as pl
-import numpy as np
-import sys
 from collections import OrderedDict
+#Testing
 from io import StringIO
-import time
-#Create example data in dataframe with various integer ranges
-# for all the different integer datatypes in python polars
-#The data types will represent int8, int16, int32, int64, uint8, uint16, uint32, uint64 
-#all data will be randomly generated using numpy random
-#The data will be stored in a dataframe with 8 columns and 1000 rows
-#The data will originally have int64 data types
-
-
+import numpy as np
 
 #This dictionary will define the ranges of each singed integer datatype
 #The key will be the max /min of the  datatype
 signed_integer_ranges = OrderedDict(
     [
-        (128, pl.Int8),
-        (32768, pl.Int16),
-        (2147483648, pl.Int32,),
-        (9223372036854775808, pl.Int64),
+        (127, pl.Int8),
+        (32767, pl.Int16),
+        (2147483647, pl.Int32,),
+        (9223372036854775807, pl.Int64),
     ]
 )
 #now for unsigned integer ranges
@@ -46,11 +37,9 @@ def downcast_integers(df):
     Note: lets use math to create the minmax values for each integer type using powers of 2
     lets first create a mapping of castings using polars syntax and avoid pandas syntax
     """
-    try:
+    original = type(df)
+    if original == pl.DataFrame:
         df = df.lazy()
-        original = pl.DataFrame
-    except AttributeError:
-        original = pl.LazyFrame
     column_transforms = [] # ex pl.col(colname).cast(selected_dtype), pl.col(colname).cast(selected_dtype))
     schema = df.schema #tuple of (column_name, dtype)
 
@@ -85,65 +74,130 @@ def downcast_integers(df):
         
         #now we will check the minmax values against the lookup dictionary
         #we will use the sorted dictionary object
-        for max_value, dtype in lookup_dict.items():
-            if amplitude < max_value:
+        for max_value_abs, dtype in lookup_dict.items():
+            if amplitude <= max_value_abs:
                 #we will select the smallest datatype that fits the range
                 #
                 #print(dtype)
                 column_transforms.append(pl.col(column_name).cast(dtype))
                 break
     if original == pl.DataFrame:
-        df.with_columns(column_transforms).collect()
+        return df.with_columns(column_transforms).collect()
 
     return df.with_columns(column_transforms)
 
-         
-#Lets test the function on the example data
-#We will print out the original data types and the new data types
 
-# set print to string io so print statements can be captured
+def test_downcast_integers_eager():
+    """We will generate an example dataframe with all the cases 
+    of integers and ranges as shown in the example dataframe above
+    We will also test with some not integer column types to make sure they are not changed
+    We will not check the content but only the final datatype. for the lazy case, 
+    we will collect before confiming the datatypes have been changed as expected
+    We will specifiy the datatpe on read in case polars gets weird about how infer_schema works
+    """
+    #set up test data
+    test_size = 100
+    example_data = pl.DataFrame({
+        "int8": np.random.randint(-127, 127, size=test_size, dtype=np.int64),
+        "int16": np.random.randint(-32767, 32767, size=test_size, dtype=np.int64),
+        "int32": np.random.randint(-2147483647, 2147483647, size=test_size, dtype=np.int64),
+        "int64": np.random.randint(-9223372036854775807, 9223372036854775807, size=test_size, dtype=np.int64),
+        "uint8": np.random.randint(0, 255, size=test_size, dtype=np.int64),
+        "uint16": np.random.randint(0, 65535, size=test_size, dtype=np.int64),
+        "uint32": np.random.randint(0, 4294967295, size=test_size, dtype=np.int64),
+        "float32": np.random.rand(test_size),
+        "float64": np.random.rand(test_size),
+        "bool": np.random.randint(0, 1, size=test_size, dtype=np.int64),
+        "str": np.random.choice(["a", "b", "c"], size=test_size),
+    })
+    #convert to csv and back again using stringio and polars
+    example_data = pl.read_csv(StringIO(example_data.write_csv()))
+    #print(f"Before conversion {example_data.estimated_size()/test_size} bytes/row  with {example_data.dtypes}")
+    #convert integers
+    start_type = type(example_data)
+    downcasted_example_data = downcast_integers(example_data)
+    #print(f"After Conversion {downcasted_example_data.estimated_size()/test_size} bytes/row with {downcasted_example_data.dtypes}")
+    #check that the datatypes have been changed as expected
+    
+    assert start_type == type(downcasted_example_data), f"The type of the dataframe should be the same before and after conversion {start_type} != {type(downcasted_example_data)}"
 
-text_data = ["test_size,time,mode\n"]
+    expected_dtypes = [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.Float64, pl.Float64, pl.UInt8, pl.Utf8]
 
-for mode in ["lazy", "eager"]:
-    for i in range(100):
-        for size in range(2,64):
-            test_size = 2*size
-            #print(f"Test size is {test_size}")
-            example_data = pl.DataFrame({
-            "int8": np.random.randint(-128, 127, size=test_size, dtype=np.int64),
-            "int16": np.random.randint(-32768, 32767, size=test_size, dtype=np.int64),
-            "int32": np.random.randint(-2147483648, 2147483647, size=test_size, dtype=np.int64),
-            "int64": np.random.randint(-9223372036854775808, 9223372036854775807, size=test_size, dtype=np.int64),
-            "uint8": np.random.randint(0, 255, size=test_size, dtype=np.int64),
-            "uint16": np.random.randint(0, 65535, size=test_size, dtype=np.int64),
-            "uint32": np.random.randint(0, 4294967295, size=test_size, dtype=np.int64),
-            
-            
-            },infer_schema_length=test_size)
-            #convert to csv and back again using stringio and polars
-
-            example_data = pl.read_csv(StringIO(example_data.write_csv()))
-            if mode == "lazy":
-                example_data = example_data.lazy()
-
-            #print(f"Before conversion {example_data.estimated_size()/test_size} bytes/row  with {example_data.dtypes}")
-
-            start = time.time()
-            downcasted_example_data = downcast_integers(example_data).collect()
-
-            text_data.append(f"{test_size},{(time.time() - start)},{mode}\n")
-            #print(f"After Conversion {downcasted_example_data.estimated_size()/test_size} bytes/row with {downcasted_example_data.dtypes}")
-
-with open(r"C:\Users\imoor\repositories\polars-types\integer_compress\downcast_integers.csv", "w") as f:
-    f.writelines(text_data)
+    assert str(list(downcasted_example_data.dtypes)) == str(expected_dtypes),  f"Datatypes have not been changed as expected {downcasted_example_data.dtypes} != {expected_dtypes}"
+    
+    #check that the data has the same ranges (no cut offs)
+    assert downcasted_example_data["int8"].min() >= -128, "int8 min value has been cut off"
+    assert downcasted_example_data["int8"].max() <= 128, "int8 max value has been cut off"
+    assert downcasted_example_data["int16"].min() >= -32768,   "int16 min value has been cut off"
+    assert downcasted_example_data["int16"].max() <= 32768,  "int16 max value has been cut off"
+    assert downcasted_example_data["int32"].min() >= -2147483648,   "int32 min value has been cut off"
+    assert downcasted_example_data["int32"].max() <= 2147483648,    "int32 max value has been cut off"
+    assert downcasted_example_data["int64"].min() >= -9223372036854775808, "int64 min value has been cut off"
+    assert downcasted_example_data["int64"].max() <= 9223372036854775808,  "int64 max value has been cut off"
+    assert downcasted_example_data["uint8"].min() >= 0, "uint8 min value has been cut off"
+    assert downcasted_example_data["uint8"].max() <= 255, "uint8 max value has been cut off"
+    assert downcasted_example_data["uint16"].min() >= 0, "uint16 min value has been cut off"
+    assert downcasted_example_data["uint16"].max() <= 65535, "uint16 max value has been cut off"
+    assert downcasted_example_data["uint32"].min() >= 0, "uint32 min value has been cut off"
+    assert downcasted_example_data["uint32"].max() <= 4294967295, "uint32 max value has been cut off"
 
 
+def test_downcast_integers_lazy():
+    """We will generate an example dataframe with all the cases 
+    of integers and ranges as shown in the example dataframe above
+    We will also test with some not integer column types to make sure they are not changed
+    We will not check the content but only the final datatype. for the lazy case, 
+    we will collect before confiming the datatypes have been changed as expected
+    We will specifiy the datatpe on read in case polars gets weird about how infer_schema works
+    """
+    #set up test data
+    test_size = 100
+    example_data = pl.DataFrame({
+        "int8": np.random.randint(-127, 127, size=test_size, dtype=np.int64),
+        "int16": np.random.randint(-32767, 32767, size=test_size, dtype=np.int64),
+        "int32": np.random.randint(-2147483647, 2147483647, size=test_size, dtype=np.int64),
+        "int64": np.random.randint(-9223372036854775807, 9223372036854775807, size=test_size, dtype=np.int64),
+        "uint8": np.random.randint(0, 255, size=test_size, dtype=np.int64),
+        "uint16": np.random.randint(0, 65535, size=test_size, dtype=np.int64),
+        "uint32": np.random.randint(0, 4294967295, size=test_size, dtype=np.int64),
+        "float32": np.random.rand(test_size),
+        "float64": np.random.rand(test_size),
+        "bool": np.random.randint(0, 1, size=test_size, dtype=np.int64),
+        "str": np.random.choice(["a", "b", "c"], size=test_size),
+    })
+    #convert to csv and back again using stringio and polars
+    example_data = pl.read_csv(StringIO(example_data.write_csv())).lazy()
+    #print(f"Before conversion {example_data.estimated_size()/test_size} bytes/row  with {example_data.dtypes}")
+    #convert integers
+    start_type = type(example_data)
+    downcasted_example_data = downcast_integers(example_data)
+    #print(f"After Conversion {downcasted_example_data.estimated_size()/test_size} bytes/row with {downcasted_example_data.dtypes}")
+    #check that the datatypes have been changed as expected
+    
+    assert start_type == type(downcasted_example_data), f"The type of the dataframe should be the same before and after conversion {start_type} != {type(downcasted_example_data)}"
 
+    expected_dtypes = [pl.Int8, pl.Int16, pl.Int32, pl.Int64, pl.UInt8, pl.UInt16, pl.UInt32, pl.Float64, pl.Float64, pl.UInt8, pl.Utf8]
 
+    assert str(list(downcasted_example_data.dtypes)) == str(expected_dtypes),  f"Datatypes have not been changed as expected {downcasted_example_data.dtypes} != {expected_dtypes}"
+    
+    #check that the data has the same ranges (no cut offs)
+    if start_type == pl.LazyFrame:
+        downcasted_example_data = downcasted_example_data.collect()
+    assert downcasted_example_data["int8"].min() >= -128, "int8 min value has been cut off"
+    assert downcasted_example_data["int8"].max() <= 128, "int8 max value has been cut off"
+    assert downcasted_example_data["int16"].min() >= -32768,   "int16 min value has been cut off"
+    assert downcasted_example_data["int16"].max() <= 32768,  "int16 max value has been cut off"
+    assert downcasted_example_data["int32"].min() >= -2147483648,   "int32 min value has been cut off"
+    assert downcasted_example_data["int32"].max() <= 2147483648,    "int32 max value has been cut off"
+    assert downcasted_example_data["int64"].min() >= -9223372036854775808, "int64 min value has been cut off"
+    assert downcasted_example_data["int64"].max() <= 9223372036854775808,  "int64 max value has been cut off"
+    assert downcasted_example_data["uint8"].min() >= 0, "uint8 min value has been cut off"
+    assert downcasted_example_data["uint8"].max() <= 255, "uint8 max value has been cut off"
+    assert downcasted_example_data["uint16"].min() >= 0, "uint16 min value has been cut off"
+    assert downcasted_example_data["uint16"].max() <= 65535, "uint16 max value has been cut off"
+    assert downcasted_example_data["uint32"].min() >= 0, "uint32 min value has been cut off"
+    assert downcasted_example_data["uint32"].max() <= 4294967295, "uint32 max value has been cut off"
 
-
-
-
-
-
+test_downcast_integers_eager()
+test_downcast_integers_lazy()
+print(f"Tests passed")
