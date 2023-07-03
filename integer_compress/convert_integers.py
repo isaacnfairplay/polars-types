@@ -197,7 +197,3 @@ def test_downcast_integers_lazy():
     assert downcasted_example_data["uint16"].max() <= 65535, "uint16 max value has been cut off"
     assert downcasted_example_data["uint32"].min() >= 0, "uint32 min value has been cut off"
     assert downcasted_example_data["uint32"].max() <= 4294967295, "uint32 max value has been cut off"
-
-test_downcast_integers_eager()
-test_downcast_integers_lazy()
-print(f"Tests passed")
