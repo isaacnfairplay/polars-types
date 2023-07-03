@@ -1,0 +1,1 @@
+This module is designed to precalculate integer ranges in dataframes and downcast accordingly. Polars uses i64 by default
