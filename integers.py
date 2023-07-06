@@ -1,8 +1,6 @@
 import polars as pl
 from collections import OrderedDict, namedtuple
-#Testing
-from io import StringIO
-import numpy as np
+
 #import module to display tracebacks
 import traceback
 
@@ -111,5 +109,5 @@ def min_reproducable_example():
         print(e)
     print(df.dtypes)
     
-pl.show_versions()
-min_reproducable_example()
+
+
