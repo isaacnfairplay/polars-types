@@ -1,8 +1,30 @@
 import polars as pl
-from collections import OrderedDict
+from collections import OrderedDict, namedtuple
 #Testing
 from io import StringIO
 import numpy as np
+
+
+IntegerRange = namedtuple("IntegerRange", ["datatype", "min_value", "max_value"])
+
+def calculate_int_range(datatype : pl.DataType)-> tuple[pl.DataType, int, int] :
+    """Function uses the name of the datatype to determine if it is signed or 
+    unsigned and bit resolution and from that its range"""
+
+    name = datatype.__name__
+    bit_resolution = int(name.lower().split("int")[-1])                   
+    signed = name[0].lower() == "u":
+    if signed:
+        min_value = -2**(bit_resolution-1) #we subtract 1 because we need to account for 0
+        max_value = 2**(bit_resolution-1)-1 
+    else:
+        min_value = 0
+        max_value = 2**(bit_resolution)-1
+    return IntegerRange(datatype, min_value, max_value)
+
+type_ranges = {calculate_int_range(type) for type in pl.INTEGER_DTYPES}
+
+
 
 #This dictionary will define the ranges of each singed integer datatype
 #The key will be the max /min of the  datatype
