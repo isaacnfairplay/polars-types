@@ -24,33 +24,33 @@ def calculate_int_range(datatype : pl.DataType)-> IntegerRange:
 
 type_ranges = {calculate_int_range(type) for type in pl.INTEGER_DTYPES}
 
+
+
 def downcast_integers(df):
-    """Function downcasts integers to the smallest possible datatype. 
-    It does this by checking the min and max values of each column and
-    comparing it to the range of the datatypes. If the min and max values
-    First it creates a list of compatable types and then selects the one with the lowest bit resolution.
-    """
-    orignal_type = type(df)
+    """Function takes a polars dataframe and downcasts
+    the integer columns to the smallest 
+    possible datatype"""
+     
+
+    start_frame_type = type(df)
     df = df.lazy()
     schema_dict = df.schema
-    cast_dict = OrderedDict
+    expressions = []
+    
     for col in df.columns:
         if schema_dict[col] not in pl.INTEGER_DTYPES:
             continue
         #Get the min and max values of the column
         min_value = df.select(pl.col(col)).min().first().collect()[0]
         max_value = df.select(pl.col(col)).max().first().collect()[0]
-        type_ranges = [type_range for type_range in type_ranges if type_range.min_value <= min_value and type_range.max_value >= max_value]
-        if len(type_ranges) == 0:
+        type_ranges = (type_range for type_range in type_ranges if type_range.min_value <= min_value and type_range.max_value >= max_value)
+        selected_type = sorted(type_ranges, key=lambda x: x.bit_resolution)[0]
+        if not type_ranges:
             continue
-        castype = sorted(type_ranges, key=lambda x: x.bit_resolution)[0] #sort by ascending bit resolution
-        cast_dict[col] = castype.datatype
-    df = df.with_columns([pl.col(col).cast(datatype) for col, datatype in cast_dict.items()])
-    if type(df) != orignal_type:
-        return df.collect()
+        expressions.append(selected_type.col(col).cast(selected_type.datatype))
+    df = df.with_columns(expressions) if expressions else df
+    df = df.collect() if start_frame_type == pl.DataFrame else df
     return df
 
-def test_downcast_integers_eager():
-    """Function to test downcast integers in eager mode"""
-    
+
     
