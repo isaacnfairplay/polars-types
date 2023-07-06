@@ -3,6 +3,8 @@ from collections import OrderedDict, namedtuple
 #Testing
 from io import StringIO
 import numpy as np
+#import module to display tracebacks
+import traceback
 
 
 IntegerRange = namedtuple("IntegerRange", ["datatype", "min_value", "max_value","bit_resolution"])
@@ -85,6 +87,29 @@ def test_downcast_integers(datatype):
 def test_downcast_integers_all():
     for type in pl.INTEGER_DTYPES:
         test_downcast_integers(type)
-test_downcast_integers_all()
 
 
+def min_reproducable_example():
+    import polars as pl
+    import traceback
+    pl.show_versions()
+    min_value = 0 # min value for UInt64
+    max_value = 2**64-1 # max value for UInt64
+    print(f"Python polars version {pl.__version__}")
+    values = list( range(min_value, max_value, (max_value-min_value)//10))
+    print(f"the max test value is less than the max datatype storage value = {max_value > max(values)}")
+    print({type(value) for value in values})
+    try:
+        df = pl.DataFrame({
+            "test":  
+                values
+                })
+        print(df.dtypes)
+    except OverflowError as e:
+        #print traceback for exception
+        traceback.print_exc(limit=10)
+        print(e)
+    print(df.dtypes)
+    
+pl.show_versions()
+min_reproducable_example()
