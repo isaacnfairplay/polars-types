@@ -17,8 +17,9 @@ def extract_attributes(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.Laz
     
     start_mode = 'lazy' if isinstance(df, pl.LazyFrame) else 'eager'
     df = df.lazy() if start_mode == 'eager' else df
-    attribute_frame = df.select([col for col in df.columns if is_attribute(col, df)])
-    fact_frame = df.select([col for col in df.columns if not is_attribute(col, df)])
+    static_cols = [col for col in df.columns if is_attribute(col, df)]
+    attribute_frame = df.select(static_cols)
+    fact_frame = df.select([col for col in df.columns if col not in static_cols])
     attribute_frame = attribute_frame.unique()
     if start_mode == "lazy":
         return attribute_frame, fact_frame
