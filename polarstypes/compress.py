@@ -2,7 +2,7 @@ import polars as pl
 from .integers import downcast_integers
 from .strings import downcast_strings
 
-def compresss_frame(df):
+def compress_frame(df):
     df = downcast_strings(df)
     df = downcast_integers(df)
     return df
