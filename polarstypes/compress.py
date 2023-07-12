@@ -1,6 +1,6 @@
 import polars as pl
-from integers import downcast_integers
-from strings import downcast_strings
+from .integers import downcast_integers
+from .strings import downcast_strings
 
 def compresss_frame(df):
     df = downcast_strings(df)
