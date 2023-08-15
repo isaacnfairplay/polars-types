@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "polarstypes"
-version = "0.1.0"
+version = "0.1.1"
 description = "This library is for utility functions around the polars dataframe library, paticulary compressing integer datatypes and also sting to categorical"
 authors = ["Isaac Moore <isaacmooreuky@gmail.com>"]
 license = "MIT"
