@@ -10,7 +10,7 @@ def identify_static_cols(df: pl.DataFrame | pl.LazyFrame)-> list[str]:
     df =df.lazy()
     return [col for col in df.columns if df.select(pl.col(col).n_unique()).collect()[col].to_list()[0]==1]    
 
-def extract_static_cols(df: pl.DataFrame | pl.LazyFrame)-> dict[str, pl.DataFrame | pl.LazyFrame, pl.DataFrame | pl.LazyFrame]:
+def extract_static_cols(df: pl.DataFrame | pl.LazyFrame)-> dict[str, pl.DataFrame | pl.LazyFrame ]:
     """
     Remove columns that are static attributes
     """
