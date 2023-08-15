@@ -28,23 +28,26 @@ TYPE_RANGES = frozenset({calculate_int_range(type) for type in pl.INTEGER_DTYPES
 
 
 
-def downcast_integers(df):
-    """Function takes a polars dataframe and downcasts
+def downcast_integers(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:
+    """ Function takes a polars frame and downcasts
     the integer columns to the smallest 
     possible datatype"""
      
 
     start_frame_type = type(df)
     df = df.lazy()
-    schema_dict = df.schema
     expressions = []
     
-    for col in df.columns:
-        if schema_dict[col] not in pl.INTEGER_DTYPES:
+    for col, dtype in df.schema.items():
+        if dtype not in pl.INTEGER_DTYPES:
             continue
         #Get the min and max values of the column
-        min_value = df.select(pl.col(col)).min().collect()[col].to_list()[0]
-        max_value = df.select(pl.col(col)).max().collect()[col].to_list()[0]
+        min_value = df.select(col).min().collect().item()
+        max_value = df.select(col).max().collect().item()
+        if max_value is None:
+            continue
+        if min_value is None:
+            min_value = 0
         compatable_types = (type_range for type_range in TYPE_RANGES if type_range.min_value <= min_value and type_range.max_value >= max_value)
         sorted_types = sorted(compatable_types, key=lambda x: x.bit_resolution)
         if not sorted_types:
