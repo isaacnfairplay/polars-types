@@ -1,7 +1,7 @@
 import polars as pl
 
 def is_attribute(col, df: pl.LazyFrame):
-        return df.select(pl.col(col).unique()).collect().n_unique() == 1
+    return df.select(pl.col(col).unique()).collect().n_unique() == 1
 
 def test_is_attribute():
     test_data = pl.DataFrame({
@@ -13,8 +13,7 @@ def test_is_attribute():
 
 test_is_attribute()
 
-def extract_attributes(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:
-    
+def extract_attributes(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:   
     start_mode = 'lazy' if isinstance(df, pl.LazyFrame) else 'eager'
     df = df.lazy() if start_mode == 'eager' else df
     static_cols = [col for col in df.columns if is_attribute(col, df)]

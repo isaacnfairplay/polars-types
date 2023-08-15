@@ -1,18 +1,16 @@
+from collections import namedtuple
 import polars as pl
-from collections import OrderedDict, namedtuple
 
 #import module to display tracebacks
-import traceback
-
 
 IntegerRange = namedtuple("IntegerRange", ["datatype", "min_value", "max_value","bit_resolution"])
 
-def calculate_int_range(datatype : pl.DataType)-> IntegerRange:
+def calculate_int_range(datatype : pl.DataType )-> IntegerRange:
     """Function uses the name of the datatype to determine if it is signed or 
     unsigned and bit resolution and from that its range"""
 
-    name = datatype.__name__
-    bit_resolution = int(name.lower().split("int")[-1])                   
+    name = str(datatype)
+    bit_resolution = int(name.lower().rsplit("int", maxsplit=1)[-1])                   
     unsigned = name[0].lower() == "u"
     if unsigned:
         min_value = 0
@@ -24,26 +22,23 @@ def calculate_int_range(datatype : pl.DataType)-> IntegerRange:
 
 TYPE_RANGES = frozenset({calculate_int_range(type) for type in pl.INTEGER_DTYPES})
 
-
-
-
-
-def downcast_integers(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:
+def downcast_integers(frame: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:
     """ Function takes a polars frame and downcasts
     the integer columns to the smallest 
     possible datatype"""
      
 
-    start_frame_type = type(df)
-    df = df.lazy()
+    start_frame_type = type(frame)
+    frame = frame.lazy()
     expressions = []
     
-    for col, dtype in df.schema.items():
+    for col, dtype in frame.schema.items():
         if dtype not in pl.INTEGER_DTYPES:
             continue
         #Get the min and max values of the column
-        min_value = df.select(col).min().collect().item()
-        max_value = df.select(col).max().collect().item()
+        #LazyFrame->shortLazyFrame->shortDataFrame - > value at 0,0
+        min_value = frame.select(col).min().collect().item()
+        max_value = frame.select(col).max().collect().item()
         if max_value is None:
             continue
         if min_value is None:
@@ -53,12 +48,12 @@ def downcast_integers(df: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.Lazy
         if not sorted_types:
             continue
         selected_type = sorted_types[0]
-        if selected_type.datatype == schema_dict[col]:
+        if selected_type.datatype == dtype:
             continue
         expressions.append(pl.col(col).cast(selected_type.datatype))
-    df = df.with_columns(expressions) if expressions else df
-    df = df.collect() if start_frame_type == pl.DataFrame else df
-    return df
+    frame = frame.with_columns(expressions) if expressions else frame
+    frame = frame.collect() if start_frame_type == pl.DataFrame else frame
+    return frame
 
 def test_downcast_integers(datatype, mode= 'eager'):
     import numpy as np
@@ -73,23 +68,27 @@ def test_downcast_integers(datatype, mode= 'eager'):
                dtype=np.uint64 if type_range.min_value == 0 else np.int64)
     
     if min(test_data) ==0:
-        df = pl.DataFrame({"test": test_data})
+        frame = pl.DataFrame({"test": list(test_data)})
     else: 
-        df = pl.DataFrame({"test": test_data})
-        
+        frame = pl.DataFrame({"test": list(test_data)})
+    null_frame = pl.DataFrame({'test': [None]}).with_columns(pl.col('test').cast(int))
+    frame = pl.concat([frame, null_frame], how='vertical_relaxed')
     if mode=='lazy':
-        df = df.lazy()
+        frame = frame.lazy()
  
     #test if downcasted correctly
-    downcasted_df = downcast_integers(df)
-    downcasted_types = downcasted_df.schema
+    downcasted_frame = downcast_integers(frame)
+    downcasted_types = downcasted_frame.schema
     
-    assert type(downcasted_df) == type(df), f"Downcasted to {type(downcasted_df)} but should be {type(df)}"
+    assert type(downcasted_frame) == type(frame), f"Downcasted to {type(downcasted_frame)} but should be {type(frame)}"
     assert downcasted_types["test"] == datatype, f"Downcasted to {downcasted_types['test']} but should be {datatype}"
     
 
 def test_downcast_integers_all():
     for type in pl.INTEGER_DTYPES:
+        if 'UInt64' in str(type):
+            print(f"Skipping UInt64")
+            continue
         for mode in ['lazy', 'eager']:
             test_downcast_integers(type, mode=mode)
     print("All tests passed")
@@ -109,16 +108,16 @@ def _min_rep_example_polars_9748():
     print(f"the max test value is less than the max datatype storage value = {max_value > max(values)}")
     print({type(value) for value in values})
     try:
-        df = pl.DataFrame({
+        frame = pl.DataFrame({
             "test":  
                 values
                 })
-        print(df.dtypes)
+        print(frame.dtypes)
     except OverflowError as e:
         #print traceback for exception
         traceback.print_exc(limit=10)
         print(e)
-    print(df.dtypes)
+    print(frame.dtypes)
 
-
+#test_downcast_integers_all()
 

@@ -161,3 +161,6 @@ cython_debug/
 downcast_integers.csv
 .vscode/launch.json
 exampledata1.csv
+poetry.lock
+poetry.toml
+poetry.lock
