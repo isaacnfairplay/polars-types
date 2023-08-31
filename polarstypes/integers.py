@@ -1,5 +1,7 @@
 from collections import namedtuple
+from typing import TypeVar
 import polars as pl
+DataFrameType = TypeVar('DataFrameType', pl.LazyFrame, pl.DataFrame)
 
 #import module to display tracebacks
 
@@ -22,7 +24,7 @@ def calculate_int_range(datatype : pl.DataType )-> IntegerRange:
 
 TYPE_RANGES = frozenset({calculate_int_range(type) for type in pl.INTEGER_DTYPES})
 
-def downcast_integers(frame: pl.LazyFrame | pl.DataFrame) -> pl.DataFrame | pl.LazyFrame:
+def downcast_integers(frame: DataFrameType) -> DataFrameType:
     """ Function takes a polars frame and downcasts
     the integer columns to the smallest 
     possible datatype"""
@@ -69,7 +71,7 @@ def test_downcast_integers(datatype, mode= 'eager'):
     
     if min(test_data) ==0:
         frame = pl.DataFrame({"test": list(test_data)})
-    else: 
+    else:
         frame = pl.DataFrame({"test": list(test_data)})
     null_frame = pl.DataFrame({'test': [None]}).with_columns(pl.col('test').cast(int))
     frame = pl.concat([frame, null_frame], how='vertical_relaxed')
@@ -80,44 +82,17 @@ def test_downcast_integers(datatype, mode= 'eager'):
     downcasted_frame = downcast_integers(frame)
     downcasted_types = downcasted_frame.schema
     
-    assert type(downcasted_frame) == type(frame), f"Downcasted to {type(downcasted_frame)} but should be {type(frame)}"
+    assert isinstance(downcasted_frame,type(frame)), f"Downcasted to {type(downcasted_frame)} but should be {type(frame)}"
     assert downcasted_types["test"] == datatype, f"Downcasted to {downcasted_types['test']} but should be {datatype}"
     
 
 def test_downcast_integers_all():
-    for type in pl.INTEGER_DTYPES:
-        if 'UInt64' in str(type):
-            print(f"Skipping UInt64")
+    for dtype in pl.INTEGER_DTYPES:
+        if 'UInt64' in str(dtype):
+            print("Skipping UInt64")
             continue
         for mode in ['lazy', 'eager']:
-            test_downcast_integers(type, mode=mode)
+            test_downcast_integers(dtype, mode=mode)
     print("All tests passed")
 
-
-
-def _min_rep_example_polars_9748():
-    print(f"min reproducable example for issue: https://github.com/pola-rs/polars/issues/9748")
-    import polars as pl
-    import traceback
-    import numpy as np
-    pl.show_versions()
-    min_value = 0 # min value for UInt64
-    max_value = 2**64-1 # max value for UInt64
-    print(f"Python polars version {pl.__version__}")
-    values = np.random.randint(min_value, max_value, 100, dtype=np.uint64 )
-    print(f"the max test value is less than the max datatype storage value = {max_value > max(values)}")
-    print({type(value) for value in values})
-    try:
-        frame = pl.DataFrame({
-            "test":  
-                values
-                })
-        print(frame.dtypes)
-    except OverflowError as e:
-        #print traceback for exception
-        traceback.print_exc(limit=10)
-        print(e)
-    print(frame.dtypes)
-
 #test_downcast_integers_all()
-
