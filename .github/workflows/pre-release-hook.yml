@@ -1,0 +1,46 @@
+name: Pre-release Hook
+
+on:
+  release:
+    types: [prereleased]
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install tomlkit
+      run: pip install tomlkit
+
+    - name: Update pyproject.toml version
+      run: |
+        # Extract the tag from GITHUB_REF and remove the 'v' prefix
+        VERSION=$(echo $GITHUB_REF | sed 's/refs\/tags\/v//')
+        
+        # Update pyproject.toml with the new version
+        python -c "
+import tomlkit
+with open('pyproject.toml', 'r') as f:
+    content = tomlkit.parse(f.read())
+
+content['tool']['poetry']['version'] = '$VERSION'
+
+with open('pyproject.toml', 'w') as f:
+    f.write(tomlkit.dumps(content))
+"
+
+    - name: Commit changes
+      run: |
+        git config user.name "GitHub Actions Bot"
+        git config user.email "<email>"
+        git add pyproject.toml
+        git commit -m "Update version to $VERSION"
+        git push
