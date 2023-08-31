@@ -16,4 +16,4 @@ numpy = "^1.25.2"
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"s
+build-backend = "poetry.core.masonry.api"
