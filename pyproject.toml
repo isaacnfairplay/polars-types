@@ -7,7 +7,7 @@ license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.11"
 polars = "^0.18.13"
 
 [tool.poetry.dev-dependencies]
@@ -19,6 +19,7 @@ typecheck = "mypy ."
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5.1"
+pytype = "^2023.8.22"
 
 [build-system]
 requires = ["poetry-core"]
