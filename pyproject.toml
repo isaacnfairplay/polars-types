@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "polarstypes"
-version = "0.2.1"
+version = "0.2.2"
 description = "This library is for utility functions around the polars dataframe library, particularly compressing integer datatypes and also string to categorical."
 authors = ["Isaac Moore <isaacmooreuky@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<3.11"
+python = ">=3.10,<3.13"
 polars = "^0.18.13"
 
 [tool.poetry.dev-dependencies]
