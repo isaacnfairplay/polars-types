@@ -14,7 +14,7 @@ polars = "^0.18.13"
 numpy = "^1.25.2"
 
 [tool.poetry.scripts]
-typecheck = "mypy ."
+typecheck = "polars-types.run_mypy:run_mypy"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5.1"
